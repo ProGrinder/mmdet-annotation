@@ -21,6 +21,14 @@ class AssignResult(util_mixins.NiceRepr):
         labels (None | LongTensor): If specified, for each predicted box
             indicates the category label of the assigned truth box.
 
+    每张图像有一个AssignResult，
+    每个AssignReult有以下四个基础属性：
+        num_gts (int): gt的数量(排除掉gt_ignore)
+        gt_inds (LongTensor): 为每个anchor分配的gt的索引(index)，
+                              >=1 表示正样本，0 表示负样本，-1 表示忽略样本
+        max_overlaps (FloatTensor): 每个anchor与其分配到的真正gt(gt索引对应)的iou
+        labels (None | LongTensor): 如果不是None，对每个anchor指示其分配到的gt的类别标签
+
     Example:
         >>> # An assign result between 4 predicted boxes and 9 true boxes
         >>> # where only two boxes were assigned.
@@ -194,6 +202,8 @@ class AssignResult(util_mixins.NiceRepr):
 
         Args:
             gt_labels (torch.Tensor): Labels of gt boxes
+
+        在初始化一个AssignResult对象(初始化时gt_label可能是None)后，后续可以使用该函数为该对象增添gt_labels属性
         """
         self_inds = torch.arange(
             1, len(gt_labels) + 1, dtype=torch.long, device=gt_labels.device)
