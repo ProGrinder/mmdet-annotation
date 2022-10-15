@@ -286,6 +286,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
         # 输入anchors、gt_bboxes、gt_bboxes_ignore进行正负样本分配
         anchors = flat_anchors[inside_flags, :]
 
+        # 得到单张图片的assign_result
         assign_result = self.assigner.assign(
             anchors, gt_bboxes, gt_bboxes_ignore,
             None if self.sampling else gt_labels)

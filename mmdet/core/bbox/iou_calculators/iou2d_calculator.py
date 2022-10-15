@@ -27,6 +27,7 @@ class BboxOverlaps2D:
         self.scale = scale
         self.dtype = dtype
 
+    # __call__方法相当于重载()运算符，可以直接使用 对象名() 调用__call__中定义的函数
     def __call__(self, bboxes1, bboxes2, mode='iou', is_aligned=False):
         """Calculate IoU between 2D bboxes.
 
@@ -45,6 +46,8 @@ class BboxOverlaps2D:
 
         Returns:
             Tensor: shape (m, n) if ``is_aligned `` is False else shape (m,)
+
+
         """
         assert bboxes1.size(-1) in [0, 4, 5]
         assert bboxes2.size(-1) in [0, 4, 5]
@@ -165,6 +168,43 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
     Returns:
         Tensor: shape (m, n) if ``is_aligned`` is False else shape (m,)
 
+    # 默认都是用FP32进行iou计算的
+      假设: bbox1 Tensor(M, 4)
+           bbox2 Tensor(N, 4)
+           mode = 'iou'
+
+      会出现以下两种情况：
+           1) is_aligned == False => calculate the overlaps between each bbox of bboxes1 and bboxes2
+                计算产生的变量:
+                area1: M x 1
+                area2: N x 1
+                lt: M x N x 2
+                rb: M x N x 2
+                wh: M x N x 2
+                overlap: M x N x 1
+                union: M x N x 1
+                ious: M x N x 1
+
+                使用FP32进行iou计算，占用总内存:  S = (9 x N x M + N + M) * 4 Byte；
+                使用FP16进行iou计算，占用总内存:  S = (9 x N x M + N + M) * 4 / 2 Byte，也相当于减少一半.
+
+           2) is_aligned == True => calculate the overlaps between each [aligned pair] of bboxes1 and bboxes2
+                计算产生的变量:
+                通常gt的数量M << anchor/proposal的数量N, 因此以 N 对齐(在参数输入前将M对齐成N维)
+                area1: N x 1
+                area2: N x 1
+                lt: N x 2
+                rb: N x 2
+                wh: N x 2
+                overlap: N x 1
+                union: N x 1
+                ious: N x 1
+
+                使用FP32进行iou计算，占用总内存:  S = 11 x N * 4 Byte；
+                使用FP16进行iou计算，占用总内存:  S = 11 x N * 4 / 2 Byte.
+
+
+
     Example:
         >>> bboxes1 = torch.FloatTensor([
         >>>     [0, 0, 10, 10],
@@ -210,6 +250,7 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
         else:
             return bboxes1.new(batch_shape + (rows, cols))
 
+    # bbox左上角坐标(x1, y1)，右下角坐标(x2, y2): 长方形面积 = (x2 - x1) * (y2 - y1)
     area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (
         bboxes1[..., 3] - bboxes1[..., 1])
     area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (
@@ -230,19 +271,24 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
             enclosed_lt = torch.min(bboxes1[..., :2], bboxes2[..., :2])
             enclosed_rb = torch.max(bboxes1[..., 2:], bboxes2[..., 2:])
     else:
+        # 求得bboxes1和bboxes2的intersection的左上，右下两点坐标
         lt = torch.max(bboxes1[..., :, None, :2],
                        bboxes2[..., None, :, :2])  # [B, rows, cols, 2]
         rb = torch.min(bboxes1[..., :, None, 2:],
                        bboxes2[..., None, :, 2:])  # [B, rows, cols, 2]
 
+        # 不相交，则最小为0
         wh = fp16_clamp(rb - lt, min=0)
         overlap = wh[..., 0] * wh[..., 1]
 
         if mode in ['iou', 'giou']:
+            # union
             union = area1[..., None] + area2[..., None, :] - overlap
         else:
+            # foreground
             union = area1[..., None]
         if mode == 'giou':
+            # 包围union的矩形的左上，右下两点坐标
             enclosed_lt = torch.min(bboxes1[..., :, None, :2],
                                     bboxes2[..., None, :, :2])
             enclosed_rb = torch.max(bboxes1[..., :, None, 2:],

@@ -51,7 +51,7 @@ class MaxIoUAssigner(BaseAssigner):
         neg_iou_thr (float): 负样本的iou阈值
         min_pos_iou (float): 为了避免ground truth与anchor重合率过低，导致在该gt上没有被分到gt的label的anchor而设置的最小正样本IOU
         gt_max_assign_all (bool): 当一个gt与多个anchor具有相同最高IOU时，这些anchor是否全部分配gt的label
-        ignore_iof_thr (float): 忽略样本的iof阈值
+        ignore_iof_thr (float): 忽略样本的iof阈值, <0时不启用
         ignore_wrt_candidates (bool): iof的分母是前景(foreground)，True则前景是bbox(anchor)，False则前景是gt_ignore，默认是True
         match_low_quality (bool): 是否启用低质量匹配，使用min_pos_iou进行比对
         gpu_assign_thr (int): -1表示只用GPU进行正负样本分配
