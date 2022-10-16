@@ -31,6 +31,8 @@ class PseudoSampler(BaseSampler):
 
         Returns:
             :obj:`SamplingResult`: sampler results
+
+        # 伪采样器，不采样，直接从assign_result.gt_inds中筛出pos_inds和neg_inds，然后封装成sampling_result返回
         """
         pos_inds = torch.nonzero(
             assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()

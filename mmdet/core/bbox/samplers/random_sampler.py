@@ -12,7 +12,7 @@ class RandomSampler(BaseSampler):
     Args:
         num (int): Number of samples
         pos_fraction (float): Fraction of positive samples
-        neg_pos_up (int, optional): Upper bound number of negative and
+        neg_pos_ub (int, optional): Upper bound number of negative and
             positive samples. Defaults to -1.
         add_gt_as_proposals (bool, optional): Whether to add ground truth
             boxes as proposals. Defaults to True.
@@ -42,10 +42,14 @@ class RandomSampler(BaseSampler):
 
         Returns:
             Tensor or ndarray: sampled indices.
+
+            gallery (Tensor | ndarray | list): 就是待筛选的下标索引序列
+        Random_Sampler的核心就是random_choice函数
         """
         assert len(gallery) >= num
 
         is_tensor = isinstance(gallery, torch.Tensor)
+        # gallery不是Tensor也给你转为Tensor
         if not is_tensor:
             if torch.cuda.is_available():
                 device = torch.cuda.current_device()
@@ -55,6 +59,7 @@ class RandomSampler(BaseSampler):
         # This is a temporary fix. We can revert the following code
         # when PyTorch fixes the abnormal return of torch.randperm.
         # See: https://github.com/open-mmlab/mmdetection/pull/5014
+        # torch.randperm(gallery.numel())[:num] => 获取将[0 ~ gallery.numel()-1]随机打乱后的数字序列，并取前num个
         perm = torch.randperm(gallery.numel())[:num].to(device=gallery.device)
         rand_inds = gallery[perm]
         if not is_tensor:
