@@ -111,7 +111,11 @@ cfg.evaluation.interval = 12
 # We can set the checkpoint saving interval to reduce the storage cost
 cfg.checkpoint_config.interval = 12
 
+# cfg.data.samples_per_gpu = 4
+# cfg.data.workers_per_gpu = 4
+
 # Set seed thus the results are more reproducible
+# 这里控制了随机种子seed
 cfg.seed = 0
 set_random_seed(0, deterministic=False)
 cfg.gpu_ids = range(1)

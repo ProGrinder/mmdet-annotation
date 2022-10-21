@@ -21,6 +21,19 @@ class SamplingResult(util_mixins.NiceRepr):
             'pos_inds': tensor([], dtype=torch.int64),
             'pos_is_gt': tensor([], dtype=torch.uint8)
         })>
+
+        在anchor_head中，init传入的bboxes是inside_flat_anchor， gt_bboxes是gt_bboxes
+
+    解释一下SamplingResult的属性：
+        pos_inds : 采样后的正样本索引
+        neg_inds : 采样后的负样本索引
+        pos_bboxes : 采样后的正样本bboxes
+        neg_bboxes : 采样后的负样本bboxes
+        pos_is_gt : 针对BaseSampler中的add_gt_as_proposal参数，如果把gt加入了bboxes中,其gt_flags为True
+        num_gts:   gt_bboxes的数量
+        pos_assign_gt_ind : 采样后的正样本所对应的gt索引
+        pos_gt_bboxes : 正样本所对应的gt_bboxes
+        pos_gt_label：  正样本所对应的gt_label
     """
 
     def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, assign_result,
@@ -32,6 +45,10 @@ class SamplingResult(util_mixins.NiceRepr):
         self.pos_is_gt = gt_flags[pos_inds]
 
         self.num_gts = gt_bboxes.shape[0]
+        # 之前在assign_wrt_overlaps()中把gt_inds赋值为gt索引+1，是为了容易在gt_inds中区分出pos_inds和neg_inds
+        # pos_inds = torch.nonzero(assign_result.gt_inds > 0, as_tuple=False)
+        # neg_inds = torch.nonzero(assign_result.gt_inds == 0, as_tuple=False)
+        # 现在采样后，在sample_result已区分了pos_inds和neg_inds，就把gt_inds 通过-1来修正 正样本和gt的对应关系
         self.pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
 
         if gt_bboxes.numel() == 0:
@@ -41,7 +58,6 @@ class SamplingResult(util_mixins.NiceRepr):
         else:
             if len(gt_bboxes.shape) < 2:
                 gt_bboxes = gt_bboxes.view(-1, 4)
-
             self.pos_gt_bboxes = gt_bboxes[self.pos_assigned_gt_inds.long(), :]
 
         if assign_result.labels is not None:

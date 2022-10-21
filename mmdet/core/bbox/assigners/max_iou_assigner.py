@@ -217,6 +217,8 @@ class MaxIoUAssigner(BaseAssigner):
 
         # 3. assign positive: above positive IoU threshold
         # 把iou > pos_iou_thr的anchor分配为正样本，其gt_inds设置为gt索引(argmax_overlaps) + 1
+        # 这样正样本的gt_inds取值范围就是[1 ~ len(gts)]，
+        # 在统一封装进assigned_gt_inds后，可以有效地和负样本的gt_inds{0}、忽略样本的gt_inds{-1}区分
         pos_inds = max_overlaps >= self.pos_iou_thr
         assigned_gt_inds[pos_inds] = argmax_overlaps[pos_inds] + 1
 

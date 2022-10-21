@@ -29,6 +29,8 @@ class DeltaXYWHBBoxCoder(BaseBBoxCoder):
             the original anchor's center. Only used by YOLOF. Default False.
         ctr_clamp (int): the maximum pixel shift to clamp. Only used by YOLOF.
             Default 32.
+
+        clip_border (bool, optional): 默认为True 图像边界外剪裁对象 => decode时使用
     """
 
     def __init__(self,
@@ -55,6 +57,8 @@ class DeltaXYWHBBoxCoder(BaseBBoxCoder):
 
         Returns:
             torch.Tensor: Box transformation deltas
+
+            将正样本encode成其与对应gt_bboxes的delta
         """
 
         assert bboxes.size(0) == gt_bboxes.size(0)
@@ -135,6 +139,7 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
     """
     assert proposals.size() == gt.size()
 
+    # 左上右下坐标(x1, y1, x2, y2) => 中心点坐标宽高(x, y, w, h)
     proposals = proposals.float()
     gt = gt.float()
     px = (proposals[..., 0] + proposals[..., 2]) * 0.5
@@ -147,6 +152,7 @@ def bbox2delta(proposals, gt, means=(0., 0., 0., 0.), stds=(1., 1., 1., 1.)):
     gw = gt[..., 2] - gt[..., 0]
     gh = gt[..., 3] - gt[..., 1]
 
+    # (dx, dy, dw, dh)
     dx = (gx - px) / pw
     dy = (gy - py) / ph
     dw = torch.log(gw / pw)
