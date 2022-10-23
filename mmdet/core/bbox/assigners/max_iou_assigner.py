@@ -245,7 +245,7 @@ class MaxIoUAssigner(BaseAssigner):
                         # 只对最先有max_iou的anchor分配为正样本
                         assigned_gt_inds[gt_argmax_overlaps[i]] = i + 1
 
-        # todo: 没有传入gt_label是正常的么？
+        # TODO 没有传入gt_label是正常的么？
         if gt_labels is not None:
             # 定义分配标签，形状为bboxes的tensor，初始化为-1，
             assigned_labels = assigned_gt_inds.new_full((num_bboxes, ), -1)

@@ -252,7 +252,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
             unmap_outputs (bool): Whether to map outputs back to the original
                 set of anchors.
 
-        Returns:  <=todo: 感觉这一段注释是错的，这写的应该是get_target的return注释
+        Returns:  <=FIXME 感觉这一段注释是错的，这写的应该是get_target的return注释
             tuple:
                 labels_list (list[Tensor]): Labels of each level
                 label_weights_list (list[Tensor]): Label weights of each level
@@ -306,7 +306,8 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
         num_valid_anchors = anchors.shape[0]
         bbox_targets = torch.zeros_like(anchors)
         bbox_weights = torch.zeros_like(anchors)
-        # todo: 为什么label要用num_classes初始化？
+        # TODO 为什么label要用num_classes初始化？
+        # 初始化值为num_classes，表示负样本/忽略样本
         labels = anchors.new_full((num_valid_anchors, ),
                                   self.num_classes,
                                   dtype=torch.long)
@@ -335,6 +336,7 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
                 # Foreground is the first class since v2.5.0
                 labels[pos_inds] = 0
             else:
+                # 正样本对应的类别标签为pos_assigned_gt_inds(范围: 0 ~ num_classes-1)
                 labels[pos_inds] = gt_labels[
                     sampling_result.pos_assigned_gt_inds]
             # 正样本的权重，实际在label_weight[pos_inds]上
@@ -526,12 +528,28 @@ class AnchorHead(BaseDenseHead, BBoxTestMixin):
 
         Returns:
             dict[str, Tensor]: A dictionary of loss components.
-        # 计算单层level上的loss
+        # 计算一个batch_size的图片，单层level上的loss
+            loss_cls需要以下输入参数:
+                cls_score (Tensor): 一个batch_size的图片单层level上的cls_score(B, num_anchors * num_classes, H, W).
+                labels (Tensor): 一个batch_size的图片单层level上的label(B, num_total_anchors)
+                label_weights (Tensor): 一个batch_size的图片单层level上的label_weights(B, num_total_anchors)
+                num_total_samples (int): 一个batch_size的图片的总采样数 => multi-level上的
+            decode需要以下参数:
+                bbox_pred = self.bbox_coder.decode(anchors, bbox_pred)
+                anchors (Tensor): 一个batch_size的图片单层level上的anchor(B, num_total_anchors, 4)
+                bbox_pred (Tensor): 一个batch_size的图片单层level上的bbox_pred[delta表示](B, num_anchors * 4, H, W).
+            loss_bbox需要以下输入参数:
+                bbox_pred (Tensor): 一个batch_size的图片单层level上的bbox_pred[经过decode后,bbox表示](B, num_anchors * 4, H, W).
+                bbox_targets (Tensor): 一个batch_size的图片单层level上的bbox_targets(B, num_total_anchors, 4)
+                bbox_weights (Tensor): 一个batch_size的图片单层level上的bbox_weights(N, num_total_anchors, 4)
+                num_total_samples (int): 一个batch_size的图片的总采样数 => multi-level上的
+
         """
 
         # classification loss
         labels = labels.reshape(-1)
         label_weights = label_weights.reshape(-1)
+        # permute函数可以将Tensor的维度换位
         cls_score = cls_score.permute(0, 2, 3,
                                       1).reshape(-1, self.cls_out_channels)
         loss_cls = self.loss_cls(

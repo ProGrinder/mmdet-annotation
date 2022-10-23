@@ -328,10 +328,17 @@ class BaseDenseHead(BaseModule, metaclass=ABCMeta):
             tuple:
                 losses: (dict[str, Tensor]): A dictionary of loss components.
                 proposal_list (list[Tensor]): Proposals of each image.
-        # x: Neck层输出的多尺度特征层 list[Tensor]
-        proposal_cfg（mmcv.Config）：测试/后处理配置，如果无，则使用test_cfg
+        参数：
+            x(list[Tensor]): Neck层(一般是FPN)输出的多尺度特征层
+            img_metas (list[dict]): 一组batch_size个图像的元数据
+            gt_bboxes (Tensor): gt_bboxes
+            gt_labels (Tensor): gt_labels
+            gt_bboxes_ignore (Tensor)： gt_ignore_bboxes
+            proposal_cfg（mmcv.Config）：测试/后处理配置，如果无，则使用test_cfg
         """
-        outs = self(x)   # 调用子类的forward前向传播，进行子类在其_init_定义好的巻积操作
+        # 调用子类的forward前向传播，进行子类在其_init_定义好的巻积操作，返回cls_score, bbox_pred
+        # TODO cls_score和bbox_pred通过巻积就能得到么?
+        outs = self(x)
         if gt_labels is None:
             loss_inputs = outs + (gt_bboxes, img_metas)
         else:

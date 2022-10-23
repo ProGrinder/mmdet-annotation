@@ -224,6 +224,18 @@ class CrossEntropyLoss(nn.Module):
             loss_weight (float, optional): Weight of the loss. Defaults to 1.0.
             avg_non_ignore (bool): The flag decides to whether the loss is
                 only averaged over non-ignored targets. Default: False.
+
+            use_sigmoid (bool, optional):  最后一层激活函数的选用 True: sigmoid & False: softmax
+                                           sigmoid  二分类  binary_cross_entropy
+                                           softmax  多分类  cross_entropy
+            use_mask (bool, optional):  是否启用mask分支loss mask_cross_entropy
+            reduction (str, optional):  计算总loss的方式, 默认是mean
+            class_weight (list[float], optional): 每个类别的权重
+            ignore_index (int | None): 需要忽略的下标
+            loss_weight (float, optional): 损失权重
+            avg_non_ignore (bool): 是否仅在未忽略的目标上平均损失; 如果ignore_index不为None时开启
+
+
         """
         super(CrossEntropyLoss, self).__init__()
         assert (use_sigmoid is False) or (use_mask is False)
@@ -234,6 +246,7 @@ class CrossEntropyLoss(nn.Module):
         self.class_weight = class_weight
         self.ignore_index = ignore_index
         self.avg_non_ignore = avg_non_ignore
+
         if ((ignore_index is not None) and not self.avg_non_ignore
                 and self.reduction == 'mean'):
             warnings.warn(
@@ -242,6 +255,7 @@ class CrossEntropyLoss(nn.Module):
                 'labels, which is the same with PyTorch official '
                 'cross_entropy, set ``avg_non_ignore=True``.')
 
+        # 确定要采用的分类loss
         if self.use_sigmoid:
             self.cls_criterion = binary_cross_entropy
         elif self.use_mask:
@@ -276,6 +290,14 @@ class CrossEntropyLoss(nn.Module):
                 If not None, it will override the default value. Default: None.
         Returns:
             torch.Tensor: The calculated loss.
+
+                                 (BatchSize*Height*Width*num_anchors)
+            cls_score (Tensor): Tensor(B*H*W*num_anchors, cls_out_channels)
+            label (Tensor): Tensor(B*H*W*num_anchors, )
+            weight (Tensor): Tensor(B*H*W*num_anchors, )
+            avg_factor (int, optional): 用于平衡loss的平均因子, 默认: None
+            reduction_override (str, optional):
+
         """
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (
@@ -288,6 +310,8 @@ class CrossEntropyLoss(nn.Module):
                 self.class_weight, device=cls_score.device)
         else:
             class_weight = None
+
+        # loss_cls = loss_weight * cls_criterion
         loss_cls = self.loss_weight * self.cls_criterion(
             cls_score,
             label,
